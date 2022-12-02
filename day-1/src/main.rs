@@ -2,37 +2,52 @@ use std::io::prelude::*;
 use std::io::BufReader;
 use std::fs::File;
 use std::str::FromStr;
+use std::vec::Vec;
+use std::env;
 
 fn main() {
-    let mut elf = 1;
-    let mut current_elf = 1;
-    let mut max_calories = 0;
-    let mut calories = 0;
+    let args: Vec<String> = env::args().collect();
+    if let Some(pathname) = args.get(1) {
+        let mut calories_list = Vec::new();
+        let mut elf = 1;
 
-    let f = File::open("input.txt").unwrap();
-    let reader = BufReader::new(f);
+        let f = File::open(pathname).unwrap();
+        let reader = BufReader::new(f);
 
-    for line in reader.lines() {
-        match line {
-            Ok(data) => {
-                if data.is_empty() {
-                    if max_calories < calories {
-                        max_calories = calories;
-                        elf = current_elf;
-                    }
+        for line in reader.lines() {
+            match line {
+                Ok(data) => {
+                    if data.is_empty() {
+                        elf = elf + 1;
+                        let new_elf = (elf, 0);
+                        calories_list.push(new_elf);
+                    } else {
+                        let parsed_calories = i32::from_str(&data).unwrap();
 
-                    current_elf = current_elf + 1;
-                    calories = 0;
-                } else {
-                    let parsed_calories = i32::from_str(&data).unwrap();
-                    calories = calories + parsed_calories;
+                        if let Some(last_elf) = calories_list.last_mut() {
+                            last_elf.1 = last_elf.1 + parsed_calories;
+                        } else {
+                            let new_elf = (elf, parsed_calories);
+                            calories_list.push(new_elf);
+                        }
+                   }
+               },
+               Err(error) => {
+                    panic!("Cannot parse line: {:?}", error);
                 }
-            },
-            Err(error) => {
-                panic!("Cannot parse line: {:?}", error);
             }
         }
-    }
+    
+        calories_list.sort_by(|a, b| a.1.cmp(&b.1));
 
-    println!("elf {} has {} calories", elf, max_calories);
+        let mut total_calories = 0;
+        for elf_pos in 1..4 {
+            if let Some((_, calories)) = calories_list.pop() {
+                println!("elf {} has {} calories", elf_pos, calories);
+                total_calories = total_calories + calories;
+            }
+        }
+
+        println!("Total Calories: {}", total_calories);
+    }
 }
